@@ -8,23 +8,21 @@ import {
 import { LoginPage } from '@/pages/LoginPage/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage/DashboardPage'
 import { WatchlistPage } from '@/pages/WatchlistPage/WatchlistPage'
+import { MovieDetailPage } from '@/pages/MovieDetailPage/MovieDetailPage'
 import { useAuthStore } from '@/features/auth/model/authStore'
 
-const rootRoute = createRootRoute({
-  component: () => <Outlet />,
-})
+const rootRoute = createRootRoute({ component: () => <Outlet /> })
+
+const requireAuth = () => {
+  const { isAuthenticated } = useAuthStore.getState()
+  if (!isAuthenticated) throw redirect({ to: '/login' })
+}
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
 })
-
-// Guard reutilizável
-const requireAuth = () => {
-  const { isAuthenticated } = useAuthStore.getState()
-  if (!isAuthenticated) throw redirect({ to: '/login' })
-}
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -40,10 +38,25 @@ const watchlistRoute = createRoute({
   component: WatchlistPage,
 })
 
+const movieDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/movie/$movieId',
+  beforeLoad: requireAuth,
+  component: MovieDetailPage,
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  beforeLoad: () => { throw redirect({ to: '/login' }) },
+})
+
 const routeTree = rootRoute.addChildren([
+  indexRoute,
   loginRoute,
   dashboardRoute,
   watchlistRoute,
+  movieDetailRoute,
 ])
 
 export const router = createRouter({ routeTree })
