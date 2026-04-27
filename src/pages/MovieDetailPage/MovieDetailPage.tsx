@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from '@tanstack/react-router'
+import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { movieApi } from '@/entities/movie/api/movieApi'
 import { buildImageUrl } from '@/entities/movie/model/types'
@@ -9,35 +9,47 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   ArrowLeft, Star, Clock, Bookmark,
-  BookmarkCheck, Calendar, Play, X,
+  BookmarkCheck, Calendar, Play, X, Tv,
 } from 'lucide-react'
 
 export function MovieDetailPage() {
   const { movieId } = useParams({ from: '/movie/$movieId' })
-  const navigate = useNavigate()
+  const { type } = useSearch({ from: '/movie/$movieId' })
+  const navigate = useNavigate({ from: '/movie/$movieId' })
   const { addMovie, removeMovie, isInWatchlist } = useWatchlistStore()
   const [showTrailer, setShowTrailer] = useState(false)
 
   const id = Number(movieId)
+  const isTv = type === 'tv'
 
   const { data: movie, isLoading: loadingMovie } = useQuery({
-    queryKey: ['movie', id],
-    queryFn: () => movieApi.getById(id),
+    queryKey: ['movie', id, type],
+    queryFn: () => movieApi.getById(id, type),
   })
 
   const { data: cast } = useQuery({
-    queryKey: ['movie-credits', id],
-    queryFn: () => movieApi.getCredits(id),
+    queryKey: ['movie-credits', id, type],
+    queryFn: () => movieApi.getCredits(id, type),
   })
 
   const { data: trailerKey } = useQuery({
-    queryKey: ['movie-trailer', id],
-    queryFn: () => movieApi.getTrailer(id),
+    queryKey: ['movie-trailer', id, type],
+    queryFn: () => movieApi.getTrailer(id, type),
+  })
+
+  const { data: similar } = useQuery({
+    queryKey: ['movie-similar', id, type],
+    queryFn: () => movieApi.getSimilar(id, type),
   })
 
   const inWatchlist = movie ? isInWatchlist(movie.id) : false
   const backdropUrl = buildImageUrl(movie?.backdrop_path ?? null, 'original')
   const posterUrl = buildImageUrl(movie?.poster_path ?? null, 'w300')
+  const title = movie?.title || movie?.name || ''
+  const releaseDate = movie?.release_date || movie?.first_air_date
+  const runtime = isTv
+    ? movie?.episode_run_time?.[0]
+    : movie?.runtime
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,7 +108,12 @@ export function MovieDetailPage() {
               {/* Dados */}
               <div className="space-y-4 flex-1 pt-2">
                 <div>
-                  <h1 className="text-4xl font-bold leading-tight">{movie.title}</h1>
+                  <h1 className="text-4xl font-bold leading-tight">{title}</h1>
+                  {isTv && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      <Tv className="w-3 h-3" /> Série
+                    </span>
+                  )}
                   {movie.tagline && (
                     <p className="text-muted-foreground italic mt-1">
                       "{movie.tagline}"
@@ -112,16 +129,21 @@ export function MovieDetailPage() {
                       {movie.vote_average.toFixed(1)}
                     </Badge>
                   )}
-                  {movie.runtime && (
+                  {runtime && (
                     <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
                       <Clock className="w-3 h-3" />
-                      {movie.runtime} min
+                      {runtime} min{isTv ? '/ep' : ''}
                     </Badge>
                   )}
-                  {movie.release_date && (
+                  {isTv && movie.number_of_seasons && (
+                    <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
+                      {movie.number_of_seasons} temporada{movie.number_of_seasons > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                  {releaseDate && (
                     <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
                       <Calendar className="w-3 h-3" />
-                      {new Date(movie.release_date).toLocaleDateString('pt-BR')}
+                      {new Date(releaseDate).toLocaleDateString('pt-BR')}
                     </Badge>
                   )}
                 </div>
@@ -204,6 +226,56 @@ export function MovieDetailPage() {
                           {actor.character}
                         </p>
                       </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SIMILARES */}
+            {similar && similar.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">
+                  {isTv ? 'Séries Similares' : 'Filmes Similares'}
+                </h2>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted">
+                  {similar.map((item) => {
+                    const posterUrl = buildImageUrl(item.poster_path, 'w300')
+                    const itemTitle = item.title || item.name || ''
+                    return (
+                      <Link
+                        key={item.id}
+                        to="/movie/$movieId"
+                        params={{ movieId: String(item.id) }}
+                        search={{ type }}
+                        className="group shrink-0 w-32 block"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-muted shadow group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300">
+                          {posterUrl ? (
+                            <img
+                              src={posterUrl}
+                              alt={itemTitle}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-3xl">
+                              🎬
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300" />
+                          {item.vote_average > 0 && (
+                            <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                              <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                              <span className="text-[10px] text-white font-medium">
+                                {item.vote_average.toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs font-medium line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                          {itemTitle}
+                        </p>
+                      </Link>
                     )
                   })}
                 </div>

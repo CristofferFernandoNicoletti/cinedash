@@ -69,9 +69,6 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            Use qualquer email válido + senha com 6+ caracteres
-          </p>
         </CardContent>
       </Card>
     </div>

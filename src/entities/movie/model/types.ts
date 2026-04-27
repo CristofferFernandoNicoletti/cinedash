@@ -1,14 +1,17 @@
 export interface Movie {
   id: number
   title: string
+  name?: string                        // séries usam 'name'
   overview: string
   poster_path: string | null
   backdrop_path: string | null
   release_date: string
+  first_air_date?: string              // séries usam 'first_air_date'
   vote_average: number
   vote_count: number
   genre_ids: number[]
   popularity: number
+  media_type?: 'movie' | 'tv' | 'person' // presente no trending
 }
 
 export interface Genre {
@@ -19,11 +22,15 @@ export interface Genre {
 export interface MovieDetail extends Movie {
   genres: Genre[]
   runtime: number | null
+  episode_run_time?: number[]          // séries
   tagline: string
   status: string
   budget: number
   revenue: number
+  number_of_episodes?: number
+  number_of_seasons?: number
 }
+
 
 export interface Cast {
   id: number

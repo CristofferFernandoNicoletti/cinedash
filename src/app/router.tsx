@@ -42,6 +42,9 @@ const movieDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/movie/$movieId',
   beforeLoad: requireAuth,
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: (search.type === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv',
+  }),
   component: MovieDetailPage,
 })
 

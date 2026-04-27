@@ -1,14 +1,26 @@
 import { tmdbClient } from '@/shared/lib/tmdb'
 import type { Movie, MovieDetail, Genre, PaginatedResponse, Cast } from '../model/types'
 
-export const movieApi = {
-  // Filmes populares (tela inicial)
-  getPopular: (page = 1) =>
-    tmdbClient
-      .get<PaginatedResponse<Movie>>('/movie/popular', { params: { page } })
-      .then((r) => r.data),
+interface VideoResult {
+  site: string
+  type: string
+  key: string
+}
 
-  // Busca por texto
+export const movieApi = {
+  getPopular: (page = 1, with_genres?: number | null) => {
+    if (with_genres) {
+      return tmdbClient
+        .get<PaginatedResponse<Movie>>('/discover/movie', {
+          params: { page, with_genres, sort_by: 'popularity.desc' },
+        })
+        .then((r) => r.data)
+    }
+    return tmdbClient
+      .get<PaginatedResponse<Movie>>('/movie/popular', { params: { page } })
+      .then((r) => r.data)
+  },
+
   search: (query: string, page = 1) =>
     tmdbClient
       .get<PaginatedResponse<Movie>>('/search/movie', {
@@ -16,36 +28,64 @@ export const movieApi = {
       })
       .then((r) => r.data),
 
-  // Detalhe do filme
-  getById: (id: number) =>
-    tmdbClient
-      .get<MovieDetail>(`/movie/${id}`)
-      .then((r) => r.data),
+  getById: (id: number, type: 'movie' | 'tv' = 'movie') =>
+    tmdbClient.get<MovieDetail>(`/${type}/${id}`).then((r) => r.data),
 
-  // Elenco do filme
-  getCredits: (id: number) =>
+  getCredits: (id: number, type: 'movie' | 'tv' = 'movie') =>
     tmdbClient
-      .get<{ cast: Cast[] }>(`/movie/${id}/credits`)
+      .get<{ cast: Cast[] }>(`/${type}/${id}/credits`)
       .then((r) => r.data.cast.slice(0, 10)),
 
-  // Gêneros para os filtros
   getGenres: () =>
     tmdbClient
       .get<{ genres: Genre[] }>('/genre/movie/list')
       .then((r) => r.data.genres),
 
-  // Trailer do YouTube
-  getTrailer: async (id: number): Promise<string | null> => {
-    const { data } = await tmdbClient.get(`/movie/${id}/videos`)
-    const trailer = data.results?.find(
-      (v: any) =>
-        v.site === 'YouTube' &&
-        (v.type === 'Trailer' || v.type === 'Teaser')
+  getTrailer: async (id: number, type: 'movie' | 'tv' = 'movie'): Promise<string | null> => {
+    const { data } = await tmdbClient.get(`/${type}/${id}/videos`)
+    const trailer = (data.results as VideoResult[])?.find(
+      (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
     )
     return trailer ? trailer.key : null
   },
 
-  // Filmes por gênero/filtros
+  // Trending (filmes + séries populares)
+  getTrending: (page = 1) =>
+    tmdbClient
+      .get<PaginatedResponse<Movie>>('/trending/all/week', {
+        params: { page },
+      })
+      .then((r) => r.data),
+
+  // Séries populares
+  getPopularTv: (page = 1, with_genres?: number | null) => {
+    if (with_genres) {
+      return tmdbClient
+        .get<PaginatedResponse<Movie>>('/discover/tv', {
+          params: { page, with_genres, sort_by: 'popularity.desc' },
+        })
+        .then((r) => r.data)
+    }
+    return tmdbClient
+      .get<PaginatedResponse<Movie>>('/tv/popular', { params: { page } })
+      .then((r) => r.data)
+  },
+
+  // Busca séries
+  searchTv: (query: string, page = 1) =>
+    tmdbClient
+      .get<PaginatedResponse<Movie>>('/search/tv', {
+        params: { query, page },
+      })
+      .then((r) => r.data),
+
+  // Gêneros de séries
+  getTvGenres: () =>
+    tmdbClient
+      .get<{ genres: Genre[] }>('/genre/tv/list')
+      .then((r) => r.data.genres),
+
+  // Filmes por filtros avançados
   discover: (params: {
     page?: number
     with_genres?: string
@@ -56,4 +96,10 @@ export const movieApi = {
     tmdbClient
       .get<PaginatedResponse<Movie>>('/discover/movie', { params })
       .then((r) => r.data),
+
+  // Similares (filmes ou séries)
+  getSimilar: (id: number, type: 'movie' | 'tv' = 'movie') =>
+    tmdbClient
+      .get<PaginatedResponse<Movie>>(`/${type}/${id}/similar`)
+      .then((r) => r.data.results.slice(0, 12)),
 }
