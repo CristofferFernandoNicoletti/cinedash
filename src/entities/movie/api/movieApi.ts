@@ -34,6 +34,17 @@ export const movieApi = {
       .get<{ genres: Genre[] }>('/genre/movie/list')
       .then((r) => r.data.genres),
 
+  // Trailer do YouTube
+  getTrailer: async (id: number): Promise<string | null> => {
+    const { data } = await tmdbClient.get(`/movie/${id}/videos`)
+    const trailer = data.results?.find(
+      (v: any) =>
+        v.site === 'YouTube' &&
+        (v.type === 'Trailer' || v.type === 'Teaser')
+    )
+    return trailer ? trailer.key : null
+  },
+
   // Filmes por gênero/filtros
   discover: (params: {
     page?: number

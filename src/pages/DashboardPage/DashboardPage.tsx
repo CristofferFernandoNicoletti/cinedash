@@ -10,12 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search, LogOut, Bookmark, BookmarkCheck, Star } from 'lucide-react'
+import { Search, LogOut, Bookmark, BookmarkCheck, Star, Sun, Moon, Play } from 'lucide-react'
+import { useThemeStore } from '@/features/theme/model/themeStore'
 import type { Movie } from '@/entities/movie/model/types'
 
 export function DashboardPage() {
   const { userEmail, logout } = useAuthStore()
   const { addMovie, removeMovie, isInWatchlist } = useWatchlistStore()
+  const { theme, toggleTheme } = useThemeStore()
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -55,6 +57,9 @@ export function DashboardPage() {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {userEmail}
             </span>
+            <Button variant="ghost" size="sm" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
             </Button>
@@ -171,17 +176,17 @@ function MovieCard({ movie, inWatchlist, onAdd, onRemove, onClick }: MovieCardPr
   const posterUrl = buildImageUrl(movie.poster_path, 'w300')
 
   return (
-    <div className="group relative cursor-pointer space-y-2">
-      <div
-        className="relative aspect-[2/3] rounded-lg overflow-hidden bg-muted"
-        onClick={onClick}
-      >
-        {/* Poster ou placeholder */}
+    <div
+      className="group relative cursor-pointer"
+      onClick={onClick}
+    >
+      {/* Poster */}
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-muted shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
         {posterUrl ? (
           <img
             src={posterUrl}
             alt={movie.title}
-            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
@@ -190,9 +195,19 @@ function MovieCard({ movie, inWatchlist, onAdd, onRemove, onClick }: MovieCardPr
           </div>
         )}
 
+        {/* Overlay escuro no hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300" />
+
+        {/* Ícone play no centro ao hover */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 border border-white/30">
+            <Play className="w-6 h-6 text-white fill-white" />
+          </div>
+        </div>
+
         {/* Rating badge */}
         {movie.vote_average > 0 && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 rounded-full px-2 py-0.5">
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5">
             <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
             <span className="text-xs text-white font-medium">
               {movie.vote_average.toFixed(1)}
@@ -206,7 +221,7 @@ function MovieCard({ movie, inWatchlist, onAdd, onRemove, onClick }: MovieCardPr
             e.stopPropagation()
             inWatchlist ? onRemove() : onAdd()
           }}
-          className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
         >
           {inWatchlist ? (
             <BookmarkCheck className="w-4 h-4 text-yellow-400" />
@@ -216,14 +231,14 @@ function MovieCard({ movie, inWatchlist, onAdd, onRemove, onClick }: MovieCardPr
         </button>
       </div>
 
-      {/* Info */}
-      <div onClick={onClick}>
-        <p className="text-sm font-medium leading-tight line-clamp-2">
+      {/* Info abaixo do card */}
+      <div className="mt-2 space-y-0.5 px-0.5">
+        <p className="text-sm font-medium leading-tight line-clamp-1 group-hover:text-primary transition-colors">
           {movie.title}
         </p>
-        <Badge variant="secondary" className="text-xs px-1.5 py-0 mt-1">
+        <p className="text-xs text-muted-foreground">
           {movie.release_date?.split('-')[0] ?? '—'}
-        </Badge>
+        </p>
       </div>
     </div>
   )
